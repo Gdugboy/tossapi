@@ -1,0 +1,8 @@
+# 테마는 DESIGN.md(Binance-design-analysis)를 따른다.
+[theme]
+base = "dark"
+primaryColor = "#FCD535"           # Binance Yellow — primary CTA/accent
+backgroundColor = "#0b0e11"        # canvas-dark
+secondaryBackgroundColor = "#1e2329"  # surface-card-dark
+textColor = "#eaecef"              # body
+font = "sans serif"

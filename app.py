@@ -13,6 +13,7 @@ from decimal import Decimal, InvalidOperation
 import pandas as pd
 import streamlit as st
 
+import theme
 from toss_client import TossApiError, TossClient
 
 try:
@@ -38,7 +39,11 @@ def fmt_krw(amount: Decimal) -> str:
 
 
 st.set_page_config(page_title="토스 포트폴리오", page_icon="📈", layout="wide")
-st.title("📈 토스증권 포트폴리오 대시보드")
+st.markdown(theme.CSS, unsafe_allow_html=True)
+st.markdown(
+    theme.brand_header("토스증권 포트폴리오", "조회 전용 대시보드 · 매매 주문 없음"),
+    unsafe_allow_html=True,
+)
 
 # ── 인증 정보 ────────────────────────────────────────────────
 with st.sidebar:
@@ -150,25 +155,31 @@ df = pd.DataFrame(rows).sort_values("평가금액(KRW)", ascending=False)
 
 left, right = st.columns([3, 2])
 
+def _pnl_style(col: pd.Series):
+    return [f"color: {theme.pnl_color(v)}" for v in col]
+
+
 with left:
     st.subheader("보유 종목")
-    st.dataframe(
-        df,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "평가금액(KRW)": st.column_config.NumberColumn(format="₩%.0f"),
-            "손익(원화)": st.column_config.NumberColumn(format="₩%.0f"),
-            "수익률": st.column_config.NumberColumn(format="%.2f%%"),
-            "평단": st.column_config.NumberColumn(format="%.2f"),
-            "현재가": st.column_config.NumberColumn(format="%.2f"),
-        },
+    styled = (
+        df.style.format(
+            {
+                "평가금액(KRW)": "₩{:,.0f}",
+                "손익(원화)": "₩{:,.0f}",
+                "수익률": "{:+.2f}%",
+                "평단": "{:,.2f}",
+                "현재가": "{:,.2f}",
+                "수량": "{:g}",
+            }
+        )
+        .apply(_pnl_style, subset=["손익(원화)", "수익률"])
     )
+    st.dataframe(styled, use_container_width=True, hide_index=True)
 
 with right:
     st.subheader("종목 비중")
     alloc = df.set_index("종목")["평가금액(KRW)"]
-    st.bar_chart(alloc)
+    st.bar_chart(alloc, color=theme.PRIMARY)
 
 st.caption(
     "※ 환율은 참고용 표시 환율(1분 갱신)이며 실제 거래 환율과 다를 수 있습니다. "

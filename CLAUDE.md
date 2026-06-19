@@ -8,6 +8,13 @@
 인증/데이터 흐름을 익히는 입문 프로젝트이며, 이후 알림 봇·백테스터·DCA 봇으로 확장 예정.
 
 ## 핵심 원칙
+- **UI는 DESIGN.md를 따른다.** `DESIGN.md`(Binance-design-analysis)가 디자인 시스템의
+  단일 소스다. 모든 화면 작업은 색·타이포·간격·라운드·컴포넌트를 DESIGN.md 토큰에서
+  가져온다. 값을 화면 코드에 하드코딩하지 말고 `theme.py`(토큰 모듈)를 import 한다.
+  새 컴포넌트가 필요하면 DESIGN.md를 먼저 보고 토큰을 늘린 뒤 쓴다. Streamlit 베이스
+  테마는 `.streamlit/config.toml`, 세부 CSS는 `theme.CSS`.
+  - 노란색(#FCD535)은 primary CTA·액센트·강조에만 (남발 금지). 본문/대면적 채움 X.
+  - 손익은 trading-up #0ecb81 / trading-down #f6465d 텍스트 컬러로 표현.
 - **조회 전용**: 주문/정정/취소 등 계좌에 영향을 주는 API는 호출하지 않는다.
   매매 기능을 추가할 때는 반드시 사용자에게 명시적으로 확인받는다.
 - **시크릿 보호**: `.env`(특히 `TOSS_CLIENT_SECRET`)는 git/로그/채팅에 노출 금지.
@@ -17,9 +24,25 @@
 ## 구조
 | 파일 | 역할 |
 |------|------|
-| `toss_client.py` | API 클라이언트. OAuth2 토큰 발급/캐싱 + 조회 메서드 |
-| `app.py` | Streamlit 대시보드 |
+| `DESIGN.md` | **디자인 시스템 단일 소스** (Binance 스타일). UI는 이걸 따른다 |
+| `theme.py` | DESIGN.md 토큰 + Streamlit CSS (화면 코드는 여기서 import) |
+| `.streamlit/config.toml` | Streamlit 베이스 테마(다크·노랑) |
+| `toss_client.py` | API 클라이언트. OAuth2 토큰 + 조회/주문 메서드 |
+| `app.py` | Streamlit 포트폴리오 대시보드 (조회 전용) |
+| `config.py` | 봇 설정(DRY_RUN, 일일예산, TP/SL, 워치리스트 로딩) |
+| `watchlist.txt` | 감시 종목 목록 (API에 급등주 검색 없음 → 후보 공급원) |
+| `analyzer.py` | AI 분석 엔진. Claude Opus 4.8 구조화 출력으로 추천 생성 |
+| `advisor.py` | 워치리스트 분석 → 추천 표출 CLI |
 | `test_connection.py` | 인증/조회 연결 점검 |
+
+## AI 트레이딩 코파일럿 (진행 중)
+사용자 목표: 소액 공격적 단타. AI가 추천 다수를 근거와 함께 표출하고, 익절/손절을
+동적 판단. **손절 매도는 사람 승인 필요**(`require_approval_for_sell`). 매수 시각·금액
+실시간 수정. 수익성 우선·안전 후순위지만, 첫 실거래 전 DRY_RUN 검증은 필수.
+- AI 엔진: Claude Opus 4.8 (`claude-opus-4-8`), 구조화 출력(Pydantic), thinking adaptive.
+- 한계: 토스 API엔 뉴스·시장전체 스크리너 없음 → 현재 판단은 차트/가격/유의사항 기반.
+- 미구현(다음): 실제 주문 실행기(trader.py) — DRY_RUN·일일예산 하드캡·멱등성키·승인게이트.
+- LLM은 주가 예측 불가. 추천은 의견이며 수익 보장 아님 — 이 톤을 유지할 것.
 
 ## 실행
 ```bash

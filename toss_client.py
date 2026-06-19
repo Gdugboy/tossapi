@@ -106,6 +106,27 @@ class TossClient:
             )
         return body.get("result") if isinstance(body, dict) else body
 
+    def _post(self, path: str, body: dict, account_seq: int | None = None) -> object:
+        headers = {"Authorization": f"Bearer {self._get_token()}"}
+        if account_seq is not None:
+            headers["X-Tossinvest-Account"] = str(account_seq)
+
+        resp = self._session.post(
+            f"{self.base_url}{path}",
+            json=body,
+            headers=headers,
+            timeout=self.timeout,
+        )
+        data = _safe_json(resp)
+        if resp.status_code != 200:
+            err = data.get("error", {}) if isinstance(data, dict) else {}
+            raise TossApiError(
+                resp.status_code,
+                err.get("code"),
+                err.get("message", "주문 요청 실패"),
+            )
+        return data.get("result") if isinstance(data, dict) else data
+
     # ── 조회 API ────────────────────────────────────────────
     def get_accounts(self) -> list[dict]:
         """정상 상태 계좌 목록. 각 항목에 accountSeq 포함."""
@@ -128,6 +149,60 @@ class TossClient:
         return self._get(
             "/api/v1/prices", params={"symbols": ",".join(symbols)}
         ) or []
+
+    def get_candles(
+        self, symbol: str, interval: str = "1d", count: int = 60
+    ) -> dict:
+        """캔들(OHLCV) 조회. interval: '1m' | '1d'. 최대 200봉."""
+        return self._get(
+            "/api/v1/candles",
+            params={"symbol": symbol, "interval": interval, "count": count},
+        )
+
+    def get_stock_warnings(self, symbol: str) -> list[dict]:
+        """매수 유의사항(VI·투자경고·정리매매 등)."""
+        return self._get(f"/api/v1/stocks/{symbol}/warnings") or []
+
+    def get_stocks(self, symbols: list[str]) -> list[dict]:
+        """종목 기본정보(이름·시장·통화·거래정지 등)."""
+        return self._get(
+            "/api/v1/stocks", params={"symbols": ",".join(symbols)}
+        ) or []
+
+    def get_buying_power(self, account_seq: int, currency: str = "KRW") -> dict:
+        """현금 기반 매수 가능 금액."""
+        return self._get(
+            "/api/v1/buying-power",
+            params={"currency": currency},
+            account_seq=account_seq,
+        )
+
+    def get_sellable_quantity(self, account_seq: int, symbol: str) -> dict:
+        """종목별 매도 가능 수량."""
+        return self._get(
+            "/api/v1/sellable-quantity",
+            params={"symbol": symbol},
+            account_seq=account_seq,
+        )
+
+    def get_orders(self, account_seq: int, status: str = "OPEN") -> list[dict]:
+        """주문 목록. status: 'OPEN'(진행중) | 'CLOSED'(종료)."""
+        return self._get(
+            "/api/v1/orders",
+            params={"status": status},
+            account_seq=account_seq,
+        ) or []
+
+    # ── 주문 API (계좌에 영향, 신중히) ───────────────────────────
+    def create_order(self, account_seq: int, order: dict) -> dict:
+        """매수/매도 주문 생성. order 는 OrderCreateRequest 스키마 dict."""
+        return self._post("/api/v1/orders", body=order, account_seq=account_seq)
+
+    def cancel_order(self, account_seq: int, order_id: str) -> dict:
+        """주문 취소."""
+        return self._post(
+            f"/api/v1/orders/{order_id}/cancel", body={}, account_seq=account_seq
+        )
 
 
 def _safe_json(resp: requests.Response) -> dict:
