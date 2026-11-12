@@ -25,7 +25,7 @@ client = TossClient(cid, secret)
 try:
     print("1) 토큰 발급 중...")
     token = client._get_token()
-    print(f"   ✅ 토큰 OK (앞 20자: {token[:20]}...)")
+    print("   ✅ 토큰 발급 성공 (값은 출력하지 않습니다)")
 
     print("2) 계좌 조회 중...")
     accounts = client.get_accounts()
@@ -33,7 +33,7 @@ try:
         print("   ⚠️  계좌가 없습니다 (빈 배열).")
     else:
         for a in accounts:
-            print(f"   ✅ 계좌 {a.get('accountNo')} · accountSeq={a['accountSeq']}")
+            print("   ✅ 조회 가능한 계좌 확인")
 
         seq = accounts[0]["accountSeq"]
         print("3) 보유자산 조회 중...")

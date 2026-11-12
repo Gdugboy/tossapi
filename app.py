@@ -38,8 +38,14 @@ def fmt_krw(amount: Decimal) -> str:
     return f"₩{amount:,.0f}"
 
 
-st.set_page_config(page_title="토스 포트폴리오", page_icon="📈", layout="wide")
+st.set_page_config(page_title="FOMO · OpenAI 모의 트레이더", page_icon="📈", layout="wide")
 st.markdown(theme.CSS, unsafe_allow_html=True)
+page = st.sidebar.radio("화면", ["모의 운용", "실제 자산 조회"])
+if page == "모의 운용":
+    from paper_ui import render
+    st.markdown(theme.brand_header("FOMO · OpenAI", "시장 탐색 · 근거 분석 · 공유 기록 · 모의 운용"), unsafe_allow_html=True)
+    render()
+    st.stop()
 st.markdown(
     theme.brand_header("토스증권 포트폴리오", "조회 전용 대시보드 · 매매 주문 없음"),
     unsafe_allow_html=True,
@@ -102,7 +108,9 @@ if not accounts:
     st.warning("조회 가능한 계좌가 없습니다.")
     st.stop()
 
-st.caption(f"계좌: {accounts[0].get('accountNo', '-')} · accountSeq={accounts[0]['accountSeq']}")
+account_number = str(accounts[0].get("accountNo") or "")
+account_label = "*" * max(len(account_number) - 4, 4) + account_number[-4:] if len(account_number) > 4 else "연결된 계좌"
+st.caption(f"계좌: {account_label} · 조회 전용")
 
 usd_krw = D(rate_info["rate"]) if rate_info else Decimal(0)
 

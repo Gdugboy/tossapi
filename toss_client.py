@@ -107,25 +107,8 @@ class TossClient:
         return body.get("result") if isinstance(body, dict) else body
 
     def _post(self, path: str, body: dict, account_seq: int | None = None) -> object:
-        headers = {"Authorization": f"Bearer {self._get_token()}"}
-        if account_seq is not None:
-            headers["X-Tossinvest-Account"] = str(account_seq)
-
-        resp = self._session.post(
-            f"{self.base_url}{path}",
-            json=body,
-            headers=headers,
-            timeout=self.timeout,
-        )
-        data = _safe_json(resp)
-        if resp.status_code != 200:
-            err = data.get("error", {}) if isinstance(data, dict) else {}
-            raise TossApiError(
-                resp.status_code,
-                err.get("code"),
-                err.get("message", "주문 요청 실패"),
-            )
-        return data.get("result") if isinstance(data, dict) else data
+        # 인증용 POST는 _get_token 내부에서만 수행한다. 주문 경로는 전송하지 않는다.
+        raise TossApiError(0, "live-orders-disabled", "이 프로젝트는 조회·모의운용 전용입니다. 실거래 주문을 전송하지 않습니다.")
 
     # ── 조회 API ────────────────────────────────────────────
     def get_accounts(self) -> list[dict]:
@@ -151,17 +134,30 @@ class TossClient:
         ) or []
 
     def get_candles(
-        self, symbol: str, interval: str = "1d", count: int = 60
+        self, symbol: str, interval: str = "1d", count: int = 60, before: str | None = None
     ) -> dict:
         """캔들(OHLCV) 조회. interval: '1m' | '1d'. 최대 200봉."""
+        params = {"symbol": symbol, "interval": interval, "count": count}
+        if before:
+            params["before"] = before
         return self._get(
             "/api/v1/candles",
-            params={"symbol": symbol, "interval": interval, "count": count},
+            params=params,
         )
 
     def get_stock_warnings(self, symbol: str) -> list[dict]:
         """매수 유의사항(VI·투자경고·정리매매 등)."""
         return self._get(f"/api/v1/stocks/{symbol}/warnings") or []
+
+    def get_all_stocks(self, market: str = "NASDAQ") -> list[dict]:
+        """거래소 전체 활성 보통주 목록. 호출 측에서 일 단위로 캐시한다."""
+        return self._get("/api/v1/stocks/all", params={"market": market, "status": "ACTIVE", "commonShare": "true"}) or []
+
+    def get_rankings(self, country: str, kind: str = "MARKET_TRADING_AMOUNT", count: int = 100) -> dict:
+        return self._get("/api/v1/rankings", params={"marketCountry": country, "type": kind, "duration": "1d", "count": count}) or {"rankings": []}
+
+    def get_market_calendar(self, country: str, date: str) -> dict:
+        return self._get(f"/api/v1/market-calendar/{country}", params={"date": date})
 
     def get_stocks(self, symbols: list[str]) -> list[dict]:
         """종목 기본정보(이름·시장·통화·거래정지 등)."""
